@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>My Applications — JobPortal</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<main class="container page">
+  <div class="section-head">
+    <div>
+      <h2>My applications</h2>
+      <p id="subText">Every role you applied to, saved on this device.</p>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-outline btn-sm" id="exportBtn">Export JSON</button>
+      <button class="btn btn-danger btn-sm" id="clearBtn">Clear all</button>
+    </div>
+  </div>
+
+  <div id="content"></div>
+</main>
+
+<!-- View application modal -->
+<div class="modal-backdrop" id="viewModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div><h2 id="vTitle" style="font-size:1.25rem"></h2><div class="company-name" id="vCompany"></div></div>
+      <button class="close-x" data-close>&times;</button>
+    </div>
+    <div class="modal-body" id="vBody"></div>
+    <div class="modal-foot"><button class="btn btn-ghost" data-close>Close</button></div>
+  </div>
+</div>
+
+<script src="data/jobs.js"></script>
+<script src="js/app.js"></script>
+<script>
+  renderNavbar("applications.html");
+
+  const content = document.getElementById("content");
+  const viewModal = document.getElementById("viewModal");
+
+  function fmt(iso) {
+    const d = new Date(iso);
+    return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+  }
+
+  function render() {
+    const apps = loadApps();
+    document.getElementById("subText").textContent =
+      apps.length ? `${apps.length} application(s) submitted.` : "You haven't applied anywhere yet.";
+
+    if (!apps.length) {
+      content.innerHTML = `<div class="empty">
+        <div class="big">&#128188;</div>
+        <h3>No applications yet</h3>
+        <p>Browse open roles and hit “Apply Now” to see them listed here.</p>
+        <a href="jobs.html" class="btn btn-primary" style="margin-top:14px">Browse Jobs</a>
+      </div>`;
+      return;
+    }
+
+    content.innerHTML = `<div class="table-wrap"><table>
+      <thead><tr>
+        <th>Role</th><th>Company</th><th>Type</th><th>Applied on</th><th>Status</th><th></th>
+      </tr></thead>
+      <tbody>
+        ${apps.map(a => `<tr>
+          <td><b>${escapeHtml(a.jobTitle)}</b><br><small style="color:var(--muted)">${escapeHtml(a.location || "")}</small></td>
+          <td>${escapeHtml(a.company)}</td>
+          <td><span class="badge ${badgeClass(a.type)}">${escapeHtml(a.type)}</span></td>
+          <td>${fmt(a.appliedOn)}</td>
+          <td><span class="status">${escapeHtml(a.status)}</span></td>
+          <td style="white-space:nowrap">
+            <button class="btn btn-outline btn-sm js-view" data-id="${a.id}">View</button>
+            <button class="btn btn-danger btn-sm js-del" data-id="${a.id}">Withdraw</button>
+          </td>
+        </tr>`).join("")}
+      </tbody></table></div>`;
+  }
+
+  content.addEventListener("click", e => {
+    const view = e.target.closest(".js-view");
+    const del = e.target.closest(".js-del");
+
+    if (view) {
+      const a = loadApps().find(x => String(x.id) === view.dataset.id);
+      document.getElementById("vTitle").textContent = a.jobTitle;
+      document.getElementById("vCompany").textContent = `${a.company} · applied ${fmt(a.appliedOn)}`;
+      document.getElementById("vBody").innerHTML = `
+        <h4>Applicant details</h4>
+        <ul>
+          <li><b>Name:</b> ${escapeHtml(a.name)}</li>
+          <li><b>Email:</b> ${escapeHtml(a.email)}</li>
+          <li><b>Phone:</b> ${escapeHtml(a.phone)}</li>
+          <li><b>College:</b> ${escapeHtml(a.college)}</li>
+          <li><b>Resume:</b> <a href="${escapeHtml(a.resume)}" target="_blank" rel="noopener" style="color:var(--brand)">Open link</a></li>
+        </ul>
+        ${a.note ? `<h4>Cover note</h4><p style="color:#475569;font-size:.94rem">${escapeHtml(a.note)}</p>` : ""}`;
+      viewModal.classList.add("open");
+    }
+
+    if (del) {
+      if (!confirm("Withdraw this application?")) return;
+      saveApps(loadApps().filter(x => String(x.id) !== del.dataset.id));
+      render();
+      toast("Application withdrawn");
+    }
+  });
+
+  viewModal.addEventListener("click", e => {
+    if (e.target === viewModal || e.target.closest("[data-close]")) viewModal.classList.remove("open");
+  });
+
+  document.getElementById("clearBtn").onclick = () => {
+    if (!loadApps().length) { toast("Nothing to clear"); return; }
+    if (!confirm("Delete all your applications?")) return;
+    saveApps([]); render(); toast("All applications cleared");
+  };
+
+  document.getElementById("exportBtn").onclick = () => {
+    const apps = loadApps();
+    if (!apps.length) { toast("No applications to export"); return; }
+    const blob = new Blob([JSON.stringify(apps, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "my-applications.json";
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast("Exported my-applications.json");
+  };
+
+  render();
+  renderFooter();
+</script>
+</body>
+</html>

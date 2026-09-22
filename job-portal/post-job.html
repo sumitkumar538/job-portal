@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Post a Job — JobPortal</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<main class="container page">
+  <div class="section-head">
+    <div>
+      <h2>Post a job or internship</h2>
+      <p>Recruiter view — the posting appears instantly on the Browse Jobs page.</p>
+    </div>
+    <a href="jobs.html" class="btn btn-outline btn-sm">Browse jobs &rarr;</a>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 320px;gap:24px;align-items:start" id="wrap">
+    <form class="form-card" id="postForm" novalidate>
+      <div class="row-2">
+        <div class="field"><label for="pTitle">Job title *</label><input id="pTitle" placeholder="e.g. Frontend Developer Intern" /><div class="error">Job title is required</div></div>
+        <div class="field"><label for="pCompany">Company name *</label><input id="pCompany" placeholder="e.g. Technova Solutions" /><div class="error">Company name is required</div></div>
+      </div>
+
+      <div class="row-2">
+        <div class="field"><label for="pType">Job type *</label>
+          <select id="pType"><option>Internship</option><option>Full-time</option><option>Part-time</option></select>
+        </div>
+        <div class="field"><label for="pMode">Work mode *</label>
+          <select id="pMode"><option>Remote</option><option>Hybrid</option><option>On-site</option></select>
+        </div>
+      </div>
+
+      <div class="row-2">
+        <div class="field"><label for="pCategory">Category *</label>
+          <select id="pCategory"><option>Software</option><option>Data</option><option>Design</option><option>Marketing</option><option>HR</option></select>
+        </div>
+        <div class="field"><label for="pLocation">Location *</label><input id="pLocation" placeholder="e.g. Pune, India or Remote" /><div class="error">Location is required</div></div>
+      </div>
+
+      <div class="row-2">
+        <div class="field"><label for="pStipend">Stipend / Salary *</label><input id="pStipend" placeholder="e.g. ₹15,000 /month or ₹5 LPA" /><div class="error">Please mention stipend or salary</div></div>
+        <div class="field"><label for="pDuration">Duration *</label><input id="pDuration" placeholder="e.g. 6 months / Permanent" /><div class="error">Duration is required</div></div>
+      </div>
+
+      <div class="field"><label for="pSkills">Skills required * <small>(comma separated)</small></label>
+        <input id="pSkills" placeholder="HTML, CSS, JavaScript, React" /><div class="error">Add at least one skill</div>
+      </div>
+
+      <div class="field"><label for="pDesc">Job description *</label>
+        <textarea id="pDesc" placeholder="Describe the role in 2–4 sentences…"></textarea>
+        <div class="error">Description must be at least 30 characters</div>
+      </div>
+
+      <div class="field"><label for="pResp">Responsibilities <small>(one per line)</small></label>
+        <textarea id="pResp" placeholder="Build reusable UI components&#10;Fix responsiveness issues"></textarea>
+      </div>
+
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-primary" type="submit">Publish Job</button>
+        <button class="btn btn-ghost" type="reset">Reset form</button>
+      </div>
+    </form>
+
+    <aside class="form-card">
+      <h3 style="font-size:1rem">Live preview</h3>
+      <p style="color:var(--muted);font-size:.85rem;margin-bottom:12px">Updates as you type.</p>
+      <div id="preview"></div>
+      <hr style="border:0;border-top:1px solid var(--line);margin:18px 0" />
+      <h3 style="font-size:.95rem">Posted by you</h3>
+      <p style="color:var(--muted);font-size:.85rem" id="myCount">0 jobs</p>
+      <button class="btn btn-danger btn-sm btn-block" id="resetData" style="margin-top:10px">Reset all demo data</button>
+    </aside>
+  </div>
+</main>
+
+<script src="data/jobs.js"></script>
+<script src="js/app.js"></script>
+<script>
+  renderNavbar("post-job.html");
+
+  const f = id => document.getElementById(id);
+  const fields = ["pTitle","pCompany","pType","pMode","pCategory","pLocation","pStipend","pDuration","pSkills","pDesc","pResp"];
+
+  function buildJob() {
+    return {
+      id: 0,
+      title: f("pTitle").value.trim() || "Job title",
+      company: f("pCompany").value.trim() || "Company name",
+      logo: initials(f("pCompany").value.trim() || "JP"),
+      location: f("pLocation").value.trim() || "Location",
+      mode: f("pMode").value,
+      type: f("pType").value,
+      category: f("pCategory").value,
+      stipend: f("pStipend").value.trim() || "Not disclosed",
+      duration: f("pDuration").value.trim() || "—",
+      experience: "Fresher",
+      posted: new Date().toISOString().slice(0, 10),
+      skills: f("pSkills").value.split(",").map(s => s.trim()).filter(Boolean),
+      description: f("pDesc").value.trim(),
+      responsibilities: f("pResp").value.split("\n").map(s => s.trim()).filter(Boolean)
+    };
+  }
+
+  function updatePreview() {
+    document.getElementById("preview").innerHTML = jobCardHTML(buildJob());
+  }
+  fields.forEach(id => f(id).addEventListener("input", updatePreview));
+  fields.forEach(id => f(id).addEventListener("change", updatePreview));
+  updatePreview();
+
+  function mark(id, bad) { f(id).closest(".field").classList.toggle("invalid", bad); return !bad; }
+
+  document.getElementById("postForm").addEventListener("submit", e => {
+    e.preventDefault();
+    let ok = true;
+    ok = mark("pTitle", f("pTitle").value.trim().length < 3) && ok;
+    ok = mark("pCompany", f("pCompany").value.trim().length < 2) && ok;
+    ok = mark("pLocation", f("pLocation").value.trim().length < 2) && ok;
+    ok = mark("pStipend", f("pStipend").value.trim().length < 1) && ok;
+    ok = mark("pDuration", f("pDuration").value.trim().length < 1) && ok;
+    ok = mark("pSkills", f("pSkills").value.split(",").filter(s => s.trim()).length === 0) && ok;
+    ok = mark("pDesc", f("pDesc").value.trim().length < 30) && ok;
+    if (!ok) { toast("Please fix the highlighted fields"); return; }
+
+    const jobs = loadJobs();
+    const job = buildJob();
+    job.id = nextId(jobs);
+    jobs.unshift(job);
+    saveJobs(jobs);
+
+    e.target.reset();
+    document.querySelectorAll(".field").forEach(x => x.classList.remove("invalid"));
+    updatePreview();
+    countMine();
+    toast("Job published successfully! 🎉");
+  });
+
+  function countMine() {
+    const extra = loadJobs().length - SEED_JOBS.length;
+    document.getElementById("myCount").textContent = `${Math.max(extra, 0)} job(s) added by you · ${loadJobs().length} total`;
+  }
+  countMine();
+
+  document.getElementById("resetData").onclick = () => {
+    if (!confirm("Reset all jobs and applications back to the default demo data?")) return;
+    localStorage.removeItem(STORE.JOBS);
+    localStorage.removeItem(STORE.APPS);
+    loadJobs();
+    countMine();
+    toast("Demo data reset ✔");
+  };
+
+  renderFooter();
+</script>
+</body>
+</html>

@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Browse Jobs &amp; Internships — JobPortal</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<main class="container page">
+  <div class="section-head">
+    <div>
+      <h2>Browse jobs &amp; internships</h2>
+      <p id="resultCount">Loading…</p>
+    </div>
+  </div>
+
+  <div class="live-bar">
+    <div id="liveStatus"><span class="spin"></span> Fetching live jobs from Remotive…</div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <label class="check" style="margin:0"><input type="checkbox" id="onlyLive" /> Live jobs only</label>
+      <button class="btn btn-outline btn-sm" id="refreshBtn">&#8635; Refresh</button>
+    </div>
+  </div>
+
+  <form class="search-card" id="searchForm" style="margin:0 0 24px;box-shadow:var(--shadow)">
+    <input type="text" id="qTitle" placeholder="Search by title, company or skill…" />
+    <select id="qSort">
+      <option value="recent">Sort: Most recent</option>
+      <option value="title">Sort: Title (A–Z)</option>
+      <option value="company">Sort: Company (A–Z)</option>
+    </select>
+    <button class="btn btn-primary" type="submit">Search</button>
+  </form>
+
+  <div class="layout">
+    <!-- Filters -->
+    <aside class="filters">
+      <h3>Filters</h3>
+      <div class="filter-group">
+        <label class="group-title">Job type</label>
+        <label class="check"><input type="checkbox" class="f-type" value="Internship" /> Internship</label>
+        <label class="check"><input type="checkbox" class="f-type" value="Full-time" /> Full-time</label>
+        <label class="check"><input type="checkbox" class="f-type" value="Part-time" /> Part-time</label>
+      </div>
+      <div class="filter-group">
+        <label class="group-title">Work mode</label>
+        <label class="check"><input type="checkbox" class="f-mode" value="Remote" /> Remote</label>
+        <label class="check"><input type="checkbox" class="f-mode" value="Hybrid" /> Hybrid</label>
+        <label class="check"><input type="checkbox" class="f-mode" value="On-site" /> On-site</label>
+      </div>
+      <div class="filter-group">
+        <label class="group-title" for="fCategory">Category</label>
+        <select id="fCategory">
+          <option value="">All categories</option>
+          <option>Software</option><option>Data</option><option>Design</option>
+          <option>Marketing</option><option>HR</option><option>Other</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label class="group-title" for="fLocation">Location</label>
+        <select id="fLocation"><option value="">All locations</option></select>
+      </div>
+      <button class="btn btn-outline btn-block btn-sm" id="clearFilters" style="margin-top:18px">Clear all filters</button>
+    </aside>
+
+    <!-- Results -->
+    <section>
+      <div class="jobs-grid" id="jobsGrid"></div>
+    </section>
+  </div>
+</main>
+
+<!-- Details modal -->
+<div class="modal-backdrop" id="detailsModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div><h2 id="dTitle" style="font-size:1.3rem"></h2><div class="company-name" id="dCompany"></div></div>
+      <button class="close-x" data-close>&times;</button>
+    </div>
+    <div class="modal-body" id="dBody"></div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" data-close>Close</button>
+      <button class="btn btn-primary" id="dApply">Apply Now</button>
+    </div>
+  </div>
+</div>
+
+<!-- Apply modal -->
+<div class="modal-backdrop" id="applyModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div><h2 style="font-size:1.25rem">Apply for this role</h2><div class="company-name" id="aFor"></div></div>
+      <button class="close-x" data-close>&times;</button>
+    </div>
+    <form id="applyForm" novalidate>
+      <div class="modal-body">
+        <div class="row-2">
+          <div class="field"><label for="fName">Full name *</label><input id="fName" /><div class="error">Please enter your name</div></div>
+          <div class="field"><label for="fEmail">Email *</label><input id="fEmail" type="email" /><div class="error">Enter a valid email address</div></div>
+        </div>
+        <div class="row-2">
+          <div class="field"><label for="fPhone">Phone *</label><input id="fPhone" /><div class="error">Enter a 10-digit phone number</div></div>
+          <div class="field"><label for="fCollege">College / University *</label><input id="fCollege" /><div class="error">This field is required</div></div>
+        </div>
+        <div class="field"><label for="fResume">Resume link (Google Drive / LinkedIn) *</label><input id="fResume" placeholder="https://" /><div class="error">Enter a valid URL starting with http</div></div>
+        <div class="field"><label for="fWhy">Why should we hire you?</label><textarea id="fWhy" placeholder="A short cover note (optional)"></textarea></div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-ghost" data-close>Cancel</button>
+        <button type="submit" class="btn btn-primary">Submit Application</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="data/jobs.js"></script>
+<script src="js/app.js"></script>
+<script src="js/api.js"></script>
+<script src="js/apply.js"></script>
+<script>
+  renderNavbar("jobs.html");
+
+  const grid     = document.getElementById("jobsGrid");
+  const countEl  = document.getElementById("resultCount");
+  const statusEl = document.getElementById("liveStatus");
+  const locSelect = document.getElementById("fLocation");
+
+  let allJobs = [];   // local + live merged
+
+  /* Pre-fill from URL (?q=&category=) */
+  const params = new URLSearchParams(location.search);
+  if (params.get("q")) document.getElementById("qTitle").value = params.get("q");
+  if (params.get("category")) document.getElementById("fCategory").value = params.get("category");
+
+  function skeletons(n) {
+    return Array.from({ length: n }, () => `
+      <div class="skeleton">
+        <div class="sk-line w40"></div><div class="sk-line w70"></div>
+        <div class="sk-line"></div><div class="sk-line w25"></div>
+      </div>`).join("");
+  }
+
+  function fillLocations() {
+    const cur = locSelect.value;
+    const locs = [...new Set(allJobs.map(j => j.location))].sort();
+    locSelect.innerHTML = '<option value="">All locations</option>' +
+      locs.map(l => `<option>${escapeHtml(l)}</option>`).join("");
+    if (locs.includes(cur)) locSelect.value = cur;
+  }
+
+  function render() {
+    const q     = document.getElementById("qTitle").value.trim().toLowerCase();
+    const types = [...document.querySelectorAll(".f-type:checked")].map(c => c.value);
+    const modes = [...document.querySelectorAll(".f-mode:checked")].map(c => c.value);
+    const cat   = document.getElementById("fCategory").value;
+    const loc   = locSelect.value;
+    const sort  = document.getElementById("qSort").value;
+    const onlyLive = document.getElementById("onlyLive").checked;
+
+    let list = allJobs.filter(j => {
+      const hay = (j.title + " " + j.company + " " + (j.skills || []).join(" ") + " " + j.category).toLowerCase();
+      if (q && !hay.includes(q)) return false;
+      if (onlyLive && !j.isLive) return false;
+      if (types.length && !types.includes(j.type)) return false;
+      if (modes.length && !modes.includes(j.mode)) return false;
+      if (cat && j.category !== cat) return false;
+      if (loc && j.location !== loc) return false;
+      return true;
+    });
+
+    if (sort === "title") list.sort((a, b) => a.title.localeCompare(b.title));
+    else if (sort === "company") list.sort((a, b) => a.company.localeCompare(b.company));
+    else list.sort((a, b) => new Date(b.posted) - new Date(a.posted));
+
+    countEl.textContent = `${list.length} opportunit${list.length === 1 ? "y" : "ies"} found`;
+    grid.innerHTML = list.length
+      ? list.map(jobCardHTML).join("")
+      : `<div class="empty"><div class="big">&#128533;</div><h3>No jobs match your filters</h3><p>Try removing a filter or searching a different keyword.</p></div>`;
+  }
+
+  async function load(force) {
+    grid.innerHTML = skeletons(4);
+    countEl.textContent = "Loading…";
+    statusEl.innerHTML = '<span class="spin"></span> Fetching live jobs from Remotive…';
+
+    const { jobs, live, meta } = await getAllJobs(force);
+    allJobs = jobs;
+    window.ALL_JOBS = jobs;            // modals ke liye
+
+    statusEl.innerHTML = meta.source === "live"
+      ? `&#128994; <b>${live.length} live jobs</b> fetched from Remotive just now &middot; auto-refreshes every 30 min`
+      : meta.source === "cache"
+        ? `&#128993; Showing <b>${live.length} cached live jobs</b> &middot; updated ${Math.max(1, Math.round((Date.now() - meta.time) / 60000))} min ago`
+        : `&#128308; Could not reach the job API &middot; showing <b>${loadJobs().length} sample jobs</b>. Check your internet and hit Refresh.`;
+
+    fillLocations();
+    render();
+  }
+
+  /* Events */
+  document.getElementById("searchForm").addEventListener("submit", e => { e.preventDefault(); render(); });
+  document.getElementById("qTitle").addEventListener("input", render);
+  document.querySelectorAll(".f-type, .f-mode").forEach(c => c.addEventListener("change", render));
+  ["fCategory", "fLocation", "qSort", "onlyLive"].forEach(id => document.getElementById(id).addEventListener("change", render));
+  document.getElementById("refreshBtn").onclick = () => { load(true); toast("Refreshing live jobs…"); };
+  document.getElementById("clearFilters").onclick = () => {
+    document.querySelectorAll(".f-type, .f-mode").forEach(c => (c.checked = false));
+    document.getElementById("onlyLive").checked = false;
+    document.getElementById("fCategory").value = "";
+    locSelect.value = "";
+    document.getElementById("qTitle").value = "";
+    document.getElementById("qSort").value = "recent";
+    render();
+  };
+
+  wireJobActions(grid);
+  load(false);
+  renderFooter();
+</script>
+</body>
+</html>

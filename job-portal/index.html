@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>JobPortal — Online Job &amp; Internship Portal for Students</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<header class="hero">
+  <div class="container">
+    <h1>Find your first job or internship</h1>
+    <p>A single place for students to discover verified internships and entry-level jobs, apply in one click, and track every application.</p>
+    <div class="hero-stats">
+      <div><b id="statJobs">0</b><small>Open roles</small></div>
+      <div><b id="statCompanies">0</b><small>Companies</small></div>
+      <div><b id="statInterns">0</b><small>Internships</small></div>
+      <div><b id="statApps">0</b><small>Your applications</small></div>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+  <!-- Search -->
+  <form class="search-card" id="searchForm">
+    <input type="text" id="qTitle" placeholder="Job title, company or skill (e.g. React, Analyst)" />
+    <select id="qCategory">
+      <option value="">All categories</option>
+      <option>Software</option>
+      <option>Data</option>
+      <option>Design</option>
+      <option>Marketing</option>
+      <option>HR</option>
+      <option>Other</option>
+    </select>
+    <button class="btn btn-primary" type="submit">Search Jobs</button>
+  </form>
+
+  <section class="page">
+    <div class="section-head">
+      <div>
+        <h2>Latest opportunities</h2>
+        <p id="liveNote"><span class="spin"></span> Syncing live jobs…</p>
+      </div>
+      <a href="jobs.html" class="btn btn-outline btn-sm">View all jobs &rarr;</a>
+    </div>
+    <div class="jobs-grid" id="latestJobs"></div>
+  </section>
+
+  <section style="padding-bottom:50px">
+    <div class="section-head"><div><h2>How it works</h2><p>Three steps from browsing to getting hired.</p></div></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px">
+      <div class="form-card"><div style="font-size:1.8rem">&#128269;</div><h3 style="margin:8px 0 4px">1. Search &amp; filter</h3><p style="color:var(--muted);font-size:.93rem">Filter by job type, work mode, category and location to find roles that actually match you.</p></div>
+      <div class="form-card"><div style="font-size:1.8rem">&#128221;</div><h3 style="margin:8px 0 4px">2. Apply in one click</h3><p style="color:var(--muted);font-size:.93rem">Fill a short form with your details and resume link — no lengthy sign-up required.</p></div>
+      <div class="form-card"><div style="font-size:1.8rem">&#128202;</div><h3 style="margin:8px 0 4px">3. Track applications</h3><p style="color:var(--muted);font-size:.93rem">Every application is saved so you always know where you applied and when.</p></div>
+    </div>
+  </section>
+</main>
+
+<!-- Details modal -->
+<div class="modal-backdrop" id="detailsModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div><h2 id="dTitle" style="font-size:1.3rem"></h2><div class="company-name" id="dCompany"></div></div>
+      <button class="close-x" data-close>&times;</button>
+    </div>
+    <div class="modal-body" id="dBody"></div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" data-close>Close</button>
+      <button class="btn btn-primary" id="dApply">Apply Now</button>
+    </div>
+  </div>
+</div>
+
+<!-- Apply modal -->
+<div class="modal-backdrop" id="applyModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div><h2 style="font-size:1.25rem">Apply for this role</h2><div class="company-name" id="aFor"></div></div>
+      <button class="close-x" data-close>&times;</button>
+    </div>
+    <form id="applyForm" novalidate>
+      <div class="modal-body">
+        <div class="row-2">
+          <div class="field"><label for="fName">Full name *</label><input id="fName" /><div class="error">Please enter your name</div></div>
+          <div class="field"><label for="fEmail">Email *</label><input id="fEmail" type="email" /><div class="error">Enter a valid email address</div></div>
+        </div>
+        <div class="row-2">
+          <div class="field"><label for="fPhone">Phone *</label><input id="fPhone" /><div class="error">Enter a 10-digit phone number</div></div>
+          <div class="field"><label for="fCollege">College / University *</label><input id="fCollege" /><div class="error">This field is required</div></div>
+        </div>
+        <div class="field"><label for="fResume">Resume link (Google Drive / LinkedIn) *</label><input id="fResume" placeholder="https://" /><div class="error">Enter a valid URL starting with http</div></div>
+        <div class="field"><label for="fWhy">Why should we hire you?</label><textarea id="fWhy" placeholder="A short cover note (optional)"></textarea></div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-ghost" data-close>Cancel</button>
+        <button type="submit" class="btn btn-primary">Submit Application</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="data/jobs.js"></script>
+<script src="js/app.js"></script>
+<script src="js/api.js"></script>
+<script src="js/apply.js"></script>
+<script>
+  renderNavbar("index.html");
+
+  const grid = document.getElementById("latestJobs");
+  document.getElementById("statApps").textContent = loadApps().length;
+
+  function skeletons(n) {
+    return Array.from({ length: n }, () => `
+      <div class="skeleton">
+        <div class="sk-line w40"></div><div class="sk-line w70"></div>
+        <div class="sk-line"></div><div class="sk-line w25"></div>
+      </div>`).join("");
+  }
+
+  function animateTo(el, target) {
+    let cur = 0;
+    const step = Math.max(1, Math.ceil(target / 28));
+    const t = setInterval(() => {
+      cur += step;
+      if (cur >= target) { cur = target; clearInterval(t); }
+      el.textContent = cur;
+    }, 28);
+  }
+
+  async function init() {
+    grid.innerHTML = skeletons(4);
+
+    const { jobs, live, meta } = await getAllJobs(false);
+    window.ALL_JOBS = jobs;
+
+    animateTo(document.getElementById("statJobs"), jobs.length);
+    animateTo(document.getElementById("statCompanies"), new Set(jobs.map(j => j.company)).size);
+    animateTo(document.getElementById("statInterns"), jobs.filter(j => j.type === "Internship").length);
+
+    const badge = document.getElementById("liveNote");
+    badge.innerHTML = meta.source === "offline"
+      ? "&#128308; Live feed unavailable — showing sample jobs"
+      : `&#128994; ${live.length} live roles synced from the Remotive job board`;
+
+    const latest = [...jobs].sort((a, b) => new Date(b.posted) - new Date(a.posted)).slice(0, 6);
+    grid.innerHTML = latest.map(jobCardHTML).join("");
+  }
+
+  wireJobActions(grid);
+  init();
+
+  document.getElementById("searchForm").addEventListener("submit", e => {
+    e.preventDefault();
+    const q = new URLSearchParams();
+    const t = document.getElementById("qTitle").value.trim();
+    const c = document.getElementById("qCategory").value;
+    if (t) q.set("q", t);
+    if (c) q.set("category", c);
+    location.href = "jobs.html" + (q.toString() ? "?" + q : "");
+  });
+
+  renderFooter();
+</script>
+</body>
+</html>
